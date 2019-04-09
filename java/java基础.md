@@ -1,29 +1,10 @@
-  * [1. java八大原生类型](#1-java八大原生类型)
-  * [2.  值传递和引用传递](#2--值传递和引用传递)
-    * [3. 面向对象和面向过程的区别](#3-面向对象和面向过程的区别)
-      * [面向过程](#面向过程)
-      * [面向对象](#面向对象)
-    * [4. 重载与重写的区别：](#4-重载与重写的区别：)
-    * [5. Java 面向对象编程三大特性: 封装 继承 多态](#5-java-面向对象编程三大特性-封装-继承-多态)
-      * [封装](#封装)
-      * [继承](#继承)
-      * [多态](#多态)
-    * [6. 变量修饰符](#6-变量修饰符)
-    * [7.接口和抽象类的区别](#7接口和抽象类的区别)
-    * [8. 浅拷贝、深拷贝：](#8-浅拷贝、深拷贝：)
-    * [9. String类](#9-string类)
-    * [10. String、StringBuffer、StringBuilder：](#10-string、stringbuffer、stringbuilder：)
-    * [11.装箱和拆箱](#11装箱和拆箱)
-    * [12. hashCode 与 equals (重要)](#12-hashcode-与-equals-重要)
-    * [13异常](#13异常)
-    * [14. final,finalize,finally关键字的区别：（常考）](#14-finalfinalizefinally关键字的区别：（常考）)
-    * [15.Java序列化中如果有些字段不想进行序列化 怎么办](#15java序列化中如果有些字段不想进行序列化-怎么办)
 
-## 1. java八大原生类型
+# 一、基础
+### 1. java八大原生类型
 
 byte(1)、boolean(1)、short(2)、char(2)、int(4)、long(64)、float(32)、double(64)
 
-## 2.  值传递和引用传递
+### 2.  值传递和引用传递
 
 下面代码中结果i还是0，因为<font color=#ff0000>八大原生类型作为形参时是值传递</font>
 
@@ -116,27 +97,33 @@ System.out.println(p.age);
 对于基本数据类型而言，就没区别。
 对于对象而言，浅拷贝实际上还是对象、深拷贝就是clone方法，返回的是一个新创建的副本。
 
-### 9. String类
- 1. String类是final类，初始化后是不可变的(immutable)，<font color=#ff0000>相关的任何change操作都会生成新的对象。</font>
- 2. StringPool（字符串常量池）
+### 9. final,finalize,finally关键字的区别：（常考）
+这是三个完全不同的东西。
+final：用来声明变量或类不可变。
+finally：用于异常处理。
+finalize：垃圾回收的方法。
+
+## 二、 String类
+#### 1. String类是final类，初始化后是不可变的(immutable)，<font color=#ff0000>相关的任何change操作都会生成新的对象。</font>
+#### 2. StringPool（字符串常量池）
  每当我们创建字符串常量时，JVM会首先检查StringPool，如果该字符串已经存在池中，那么就直接返回常量池中的实例引用。如果不存在，就会实例化该字符串再将其放到常量池中。
- 3. 字符串的创建方式
+ #### 3. 字符串的创建方式
     3.1 单独使用""引号创建的字符串都是常量，编译期就已经确定存储到String Pool（字符串常量池）中；
     3.2 使用 new String("")：常量池（如果没有）和堆中都会生成对象，然后返回堆中的地址。
     3.3 使用只包含常量的字符串连接符如"aa" + "aa"创建的也是常量,编译期就能确定,已经确定存储到String Pool中；
     3.4 使用包含变量的字符串连接符如"aa" + s1创建的对象是运行期才创建的,存储在heap中；
-4. 关于equals和==：String中 == 比较的是两个对象的地址，equals才是比较对象中的值。
-5. String为什么是final的？
+#### 4. 关于equals和==：String中 == 比较的是两个对象的地址，equals才是比较对象中的值。
+#### 5. String为什么是final的？
 保证安全性：String非常常用，如果不是final的话，便可以编写一个恶意的类来继承String。
-6. String c = "xx" + "yy " + a + "zz" + "mm" + b; 实质上的实现过程是： String c = new StringBuilder("xxyy ").append(a).append("zz").append("mm").append(b).toString();
+#### 6. String c = "xx" + "yy " + a + "zz" + "mm" + b; 实质上的实现过程是： String c = new StringBuilder("xxyy ").append(a).append("zz").append("mm").append(b).toString();
 
-### 10. String、StringBuffer、StringBuilder：
+### 7. String、StringBuffer、StringBuilder：
 速度上：StringBuilder > StringBuffer > String（String最慢的原因在于String为常量，另外两个为变量）
     String：适用于少量的字符串操作的情况
     StringBuilder：适用于单线程下在字符缓冲区进行大量操作的情况
     StringBuffer：适用多线程下在字符缓冲区进行大量操作的情况
 
-### 11.装箱和拆箱
+## 三、装箱和拆箱
 Integer i = 10;  //装箱
 int n = i;   //拆箱
  1. 下面这段代码的输出结果是什么？
@@ -165,7 +152,7 @@ int n = i;   //拆箱
 
  3. 对于Boolean而言，只要相同一定是true。
  
- ###  12. hashCode 与 equals (重要)
+ ##  四、 hashCode 与 equals (重要)
 
 面试官可能会问你：“你重写过 hashcode 和 equals 么，为什么重写equals时必须重写hashCode方法？”
 
@@ -173,7 +160,7 @@ int n = i;   //拆箱
 因为不重写的话，就会用Object.hashCode()方法，而**Object.hashCode返回的是地址本身**。
 就可能出现重写了equals后使得两个对象的equals为true，但hashcode不相同的情况。
 
-### 13异常
+## 五、异常
  1. 所有的异常都是通过Throwable衍生出来的。
  2. Java中的检查型异常和非检查型异常有什么区别？(常考）
 检查型异常和非检查型异常的主要区别在于其处理方式。检查型异常需要使用try, catch和finally关键字在编译期进行处理，否则编译器会报错。对于非检查型异常则不需要这样做。
@@ -204,14 +191,157 @@ throw是用来抛出任意异常的，在方法中。而throws是在函数头中
 7. 如果执行finally代码块之前方法返回了结果，或者JVM退出了，finally块中还会执行吗？
 这个问题也可以换个方式问：“**如果在try或者finally的代码块中调用了System.exit()，结果会是怎样”**。事实上，<font color=#ff0000>只有在try里面是有System.exit(0)来退出JVM的情况下finally块中的代码才不会执行</font>。
 
+## 六、反射
+#### 1. 定义:反射是Java语言的一个特性，它允许程序<font color=#ff0000>在运行时（注意不是编译的时候）</font>动态获取类的所有信息。
+#### 2. 原理：
+Java中创建一个类时，JVM就会创建对应的Class对象，最后加载到内存中（方法区）。
+#### 3. 反射的优缺点：
+优点：反射提高了程序的灵活性和扩展性。
+缺点：性能不好。
 
-### 14. final,finalize,finally关键字的区别：（常考）
-这是三个完全不同的东西。
-final：用来声明变量或类不可变。
-finally：用于异常处理。
-finalize：垃圾回收的方法。
+#### 4. 哪里用到反射机制？
+spring框架中就大量地运用了反射的机制，例如DI。
+
+#### 5. 常用代码：
+```java
+ //获取class
+ c = Class.forName("cn.classes.Person");
+ c = Person.class
+
+//利用class实例化对象
+Person p = (Person)c.newInstance();
+//有参构造
+Constructor<?>[] cons = c.getConstructors();
+Person p = (Person)cons[0].newInstance("xy",20);
+//调用方法
+c.getMethod("add").invoke(xx);
+```
+
+#### 6. 反射的优缺点:
+优点：实现动态创建对象和编译，体现出很大的灵活性。
+缺点：对性能有影响。
+
+
+## 七、代理
+#### 静态代理（即代理模式）
+
+#### 动态代理：（spring的aop使用的就是动态代理）
+1. 个人理解：client -->  代理  --> 目标object
+即client不直接访问目标object，而是通过代理实现访问，代理起着中介的作用。
+2. 两种方式：
+（1）java动态代理： 委托类必须实现接口，只能代理<font color=#ff0000>接口</font>。通过<font color=#ff0000>反射机制</font>实现。
+使用方法：
+&emsp;a、创建被代理的类以及接口
+&emsp;b、创建一个实现接口InvacationHandler的类，它必须实现invoke方法。
+&emsp;c、通过Proxy.newProxyInstance(...)创建一个代理
+&emsp;d、通过代理调用方法
+
+```java
+public interface UserService{
+	void addUser();
+}
+public class UserServiceImpl implements UserService{
+	@Override
+	public void addUser(){
+		System.out.println("addUser()");
+	}
+}
+public class JDKDynamicProxy implements InvocationHandler
+{
+    private Object target;
+
+    public JDKDynamicProxy(Object target) {
+        this.target = target;
+    }
+
+    /**
+     * 获取被代理接口实例对象
+     * @param <T>
+     * @return
+     */
+    public <T> T getProxy() {
+        return (T) Proxy.newProxyInstance(target.getClass().getClassLoader(), target.getClass().getInterfaces(), this);
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        System.out.println("Do something before");
+        Object result = method.invoke(target, args);
+        System.out.println("Do something after");
+        return result;
+    }
+}
+public class Test
+{
+	public static void main(String[] args)
+	{
+	    // jdk动态代理测试
+        UserService userService = new JDKDynamicProxy(new UserServiceImpl()).getProxy();
+        userService.addUser();
+	}
+}
+```
+
+（2）cglib动态代理：对类进行代理,但需要创建一个子类对象。
+####  正反向代理：
+1. 正向代理（为客户端服务）：
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2019020210510679.png)
+用途：
+a、翻墙
+b、学校的上网认证
+c、作为缓存
+
+2.反向代理：（反过来为内网服务，客户端是无法感知代理的存在的，nginx使用的就是反向代理技术）
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20190202105217317.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JpbnRvWXU=,size_15,color_FFFFFF,t_70)
+ 作用：
+ a、保护内网的安全
+ b、负载均衡
+
+
  
-### 15.Java序列化中如果有些字段不想进行序列化 怎么办
+## 八、补充：
+#### 1.Java序列化中如果有些字段不想进行序列化 怎么办
 
 对于不想进行序列化的变量，使用transient关键字修饰。
 transient关键字的作用是：阻止实例中那些用此关键字修饰的的变量序列化；当对象被反序列化时，被transient修饰的变量值不会被持久化和恢复。transient只能修饰变量，不能修饰类和方法。
+
+#### 2. JDK1.8 的新特性
+a）HashMap中新添加了红黑树，concurrentHashMap结构改变。
+b）Lambda表达式：
+个人理解：目前个人喜欢用lambda来代替内部类或者内部方法，格式一般为  参数或(参数) -> (单或多条语句);
+```java
+//		PriorityQueue<Integer> queue = new PriorityQueue<Integer>(k, new Comparator<Integer>() {
+//			  
+//	        @Override
+//	        public int compare(Integer o1, Integer o2) {
+//	            return o2.compareTo(o1);
+//	        }
+//	    });
+
+		//使用lamda表达式
+		PriorityQueue<Integer> queue = new PriorityQueue<>(k,(o1,o2) -> o2.compareTo(o1));
+```
+
+c）Stream API： 详见 https://www.cnblogs.com/aoeiuv/p/5911692.html
+大家可以把Stream当成一个装饰后的Iterator。
+最简单例子：统计num中不为空的个数
+
+```java 
+//Lists是Guava中的一个工具类
+List<Integer> nums = Lists.newArrayList(1,null,3,4,null,6);
+nums.stream().filter(num -> num != null).count();
+```
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2019022411174939.png)
+而转换Stream有以下几种方式：（不背）
+① distinct
+② filter
+③ map
+④ flatMap
+⑤ peek
+⑥ limit
+⑦ skip
+例子：
+
+```java
+List<Integer> nums = Lists.newArrayList(1,1,null,2,3,4,null,5,6,7,8,9,10);
+System.out.println(“sum is:”+nums.stream().filter(num -> num != null).distinct().mapToInt(num -> num * 2).peek(System.out::println).skip(2).limit(4).sum());
