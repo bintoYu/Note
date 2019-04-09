@@ -1,3 +1,20 @@
+  * [Map:](#map)
+    * [HashMap：](#hashmap：)
+    * [HashTable：](#hashtable：)
+    * [CocurrentHashMap（JDK 1.7）：](#cocurrenthashmap（jdk-17）：)
+    * [CocurrentHashMap（JDK 1.8） （读不加锁、写加锁）](#cocurrenthashmap（jdk-18）-（读不加锁、写加锁）)
+        * [源码解析：](#源码解析：)
+    * [LinkedHashMap（HashMap + 双向链表）](#linkedhashmap（hashmap--双向链表）)
+    * [TreeMap](#treemap)
+* [List](#list)
+    * [ArrayList（动态数组）](#arraylist（动态数组）)
+    * [LinkedList（链表）](#linkedlist（链表）)
+    * [阻塞队列：（详见并发编程.md）](#阻塞队列：（详见并发编程md）)
+    * [Vector](#vector)
+  * [Set：](#set：)
+  * [fail-fast机制（了解）](#fail-fast机制（了解）)
+      * [补充：](#补充：)
+
 ## Map:
 
 ### HashMap：
