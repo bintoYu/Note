@@ -1,18 +1,55 @@
-### 总流程图
+**注：本篇讲的较为混乱，而且个人觉得实际收获不是很大，因此可以选择跳过，直接看源码分析-2-MapperScanner。**
+
+
+
+### 预备知识：
+
+在spring整合mybatis时，我们需要配置以下3个东西：
+
+- dataSource（数据源）
+- sqlSessionFactory
+- MapperScanner（Mapper扫描器）
+
+本次将介绍的是sqlSessionFactory的生成，在讲解具体代码之前，先列出mybatis-plus的SqlSessionFactory包含的6种重要属性，以方便后续代码理解：
+
+```xml
+<bean id="sqlSessionFactory"  
+ class="com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean">  
+ <!-- 配置数据源 -->  
+ <property name="dataSource" ref="dataSource" />  
+ <!-- 自动扫描 Xml 文件位置 -->  
+ <property name="mapperLocations" value="classpath*:com/ds/orm/mapper/**/*.xml" />  
+ <!-- 配置 Mybatis 配置文件（可无） -->  
+ <property name="configLocation" value="classpath:mybatis-config.xml" />  
+ <!-- 配置包别名，支持通配符 * 或者 ; 分割 -->  
+ <property name="typeAliasesPackage" value="com.ds.orm.model" />  
+ <!-- 枚举属性配置扫描，支持通配符 * 或者 ; 分割 -->  
+ <property name="typeEnumsPackage" value="com.baomidou.springmvc.entity.*.enums" /> 
+
+ <!-- MP 全局配置注入 -->  
+ <property name="globalConfig" ref="globalConfig" />  
+</bean>  
+```
+
+
+
+### 提前总结：流程图
 
 ![1556618422137](<https://github.com/bintoYu/Note/blob/master/picture/mybatis-plus/sqlSessionFactory.png>)
 
->### 正式开始
+
+
+### 正式开始
 
 第一步：项目中引入mybatis-plus：
 
 > ```xml
 > pom.xml
->    	<dependency>
->      <groupId>com.baomidou</groupId>
->      <artifactId>mybatis-plus-boot-starter</artifactId>
->      <version>3.1.1</version>
->      </dependency>
+> 	<dependency>
+>   <groupId>com.baomidou</groupId>
+>   <artifactId>mybatis-plus-boot-starter</artifactId>
+>   <version>3.1.1</version>
+>   </dependency>
 > ```
 >
 > 第二步：可以从扩展库（external Libraries）中查看到mybatis-plus-boot-starter的源码。
@@ -52,73 +89,49 @@ org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 
 > ### 配置SqlSessionFactory
 >
-> 在讲解具体代码之前，先列出mybatis-plus的SqlSessionFactory包含的6种重要属性，以方便后续代码理解：
->
-> ```xml
-> <bean id="sqlSessionFactory"  
->     class="com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean">  
->     <!-- 配置数据源 -->  
->     <property name="dataSource" ref="dataSource" />  
->     <!-- 自动扫描 Xml 文件位置 -->  
->     <property name="mapperLocations" value="classpath*:com/ds/orm/mapper/**/*.xml" />  
->     <!-- 配置 Mybatis 配置文件（可无） -->  
->     <property name="configLocation" value="classpath:mybatis-config.xml" />  
->     <!-- 配置包别名，支持通配符 * 或者 ; 分割 -->  
->     <property name="typeAliasesPackage" value="com.ds.orm.model" />  
->     <!-- 枚举属性配置扫描，支持通配符 * 或者 ; 分割 -->  
->     <property name="typeEnumsPackage" value="com.baomidou.springmvc.entity.*.enums" /> 
-> 
->     <!-- MP 全局配置注入 -->  
->     <property name="globalConfig" ref="globalConfig" />  
-> </bean>  
-> ```
->
-> 
->
 > 代码如下：
 >
 > ```java
+> @Bean
+> @ConditionalOnMissingBean
+> public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+> // TODO 使用 MybatisSqlSessionFactoryBean 而不是 SqlSessionFactoryBean
+> MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
+> factory.setDataSource(dataSource);
+> factory.setVfs(SpringBootVFS.class);
+> //设置configurationLocation到factory中
+> if (StringUtils.hasText(this.properties.getConfigLocation())) {
+>    factory.setConfigLocation(this.resourceLoader.getResource(this.properties.getConfigLocation()));
+> }
 > 
->  @Bean
->  @ConditionalOnMissingBean
->  public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
->      // TODO 使用 MybatisSqlSessionFactoryBean 而不是 SqlSessionFactoryBean
->      MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
->      factory.setDataSource(dataSource);
->      factory.setVfs(SpringBootVFS.class);
->       //设置configurationLocation到factory中
->      if (StringUtils.hasText(this.properties.getConfigLocation())) {
->          factory.setConfigLocation(this.resourceLoader.getResource(this.properties.getConfigLocation()));
->      }
->      
->      //设置configuration到factory中，后面会用到！
->      applyConfiguration(factory);
->      
->      if (this.properties.getConfigurationProperties() != null) {
->          factory.setConfigurationProperties(this.properties.getConfigurationProperties());
->      
->          
->      //设置TypeAliasesPackage、TypeAliasesSuperType、TypeHandlersPackage、MapperLocations
->         if (StringUtils.hasLength(this.properties.getTypeAliasesPackage())) {
->             factory.setTypeAliasesPackage(this.properties.getTypeAliasesPackage());
->         }
->         if (this.properties.getTypeAliasesSuperType() != null) {
->             factory.setTypeAliasesSuperType(this.properties.getTypeAliasesSuperType());
->         }
->         if (StringUtils.hasLength(this.properties.getTypeHandlersPackage())) {
->             factory.setTypeHandlersPackage(this.properties.getTypeHandlersPackage());
->         }
->         if (!ObjectUtils.isEmpty(this.properties.resolveMapperLocations())) {
->             factory.setMapperLocations(this.properties.resolveMapperLocations());
->         }         
->          
->      //...设置其他属性到factory中，代码略
->   	 ...
->      ...    
->      
->          
->      factory.setGlobalConfig(globalConfig);
->  	return factory.getObject();
+> //设置configuration到factory中，后面会用到！
+> applyConfiguration(factory);
+> 
+> if (this.properties.getConfigurationProperties() != null) {
+>    factory.setConfigurationProperties(this.properties.getConfigurationProperties());
+> 
+>    
+> //设置TypeAliasesPackage、TypeAliasesSuperType、TypeHandlersPackage、MapperLocations
+>   if (StringUtils.hasLength(this.properties.getTypeAliasesPackage())) {
+>       factory.setTypeAliasesPackage(this.properties.getTypeAliasesPackage());
+>   }
+>   if (this.properties.getTypeAliasesSuperType() != null) {
+>       factory.setTypeAliasesSuperType(this.properties.getTypeAliasesSuperType());
+>   }
+>   if (StringUtils.hasLength(this.properties.getTypeHandlersPackage())) {
+>       factory.setTypeHandlersPackage(this.properties.getTypeHandlersPackage());
+>   }
+>   if (!ObjectUtils.isEmpty(this.properties.resolveMapperLocations())) {
+>       factory.setMapperLocations(this.properties.resolveMapperLocations());
+>   }         
+>    
+> //...设置其他属性到factory中，代码略
+> 	 ...
+> ...    
+> 
+>    
+> factory.setGlobalConfig(globalConfig);
+> 	return factory.getObject();
 > }
 > ```
 
@@ -276,6 +289,7 @@ protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
                 });
             });
         }
+
 ```
 
 ​		
@@ -314,5 +328,8 @@ protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
                 }
             }
         } 
+
 ```
+
+
 
