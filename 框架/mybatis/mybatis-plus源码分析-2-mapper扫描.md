@@ -25,7 +25,6 @@
 
 - annotationClass： 当指定了annotationClass 的时候，MapperScannerConfigurer将只注册使用了 annotationClass 注解标记的接口。 -
 - markerInterface： 当指定了 markerInterface 之后，MapperScannerConfigurer 将只注册继承自 markerInterface 的接口。
-
 - 注：如果上述两个属性都指定了的话，那么 MapperScannerConfigurer 将取它们的并集，而不是交集。
 
 示例xml配置：
@@ -220,23 +219,192 @@ registerBeanDefinitions方法的主要功能有三：
 
 首先，ClassPathBeanDefinitionScanner.doScan(basePackages)方法，该方法会对之前存入的List<String> basePackages进行扫描，得到packages中所有类的beanDefinitions，并将beanDefinitions注册到容器中。
 
-接着，调用processBeanDefinitions方法对获得的beanDefinitions进行处理：该方法主要就是为所有beanDefinition设置了bean的名称、以及之前提到mapperFactoryBeanClass、addToConfig、sqlSessionFactory以及sqlSessionTemplate，不是研究重点，因此不列出代码。
-
 关于ClassPathBeanDefinitionScanner.doScan(basePackages)方法的具体介绍，详见：
 
 <https://www.jianshu.com/p/d5ffdccc4f5d>
 
+接着，调用processBeanDefinitions方法对获得的beanDefinitions进行处理：
+
+```java
+  private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
+    GenericBeanDefinition definition;
+    for (BeanDefinitionHolder holder : beanDefinitions) {
+      definition = (GenericBeanDefinition) holder.getBeanDefinition();
+      String beanClassName = definition.getBeanClassName();
+
+      //最最最关键的两行代码：
+      //设置构造器的参数为beanClassName，通过构造器注入接口字段为beanClassName（即设置为实际的标注了@Mapper的接口）
+      definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);
+      //设置beanClass为mapperFactoryBean.class，这个mapperFactoryBean尤为重要
+      //当spring注入这个definition的时候，实际上调用的是该MapperFactoryBean的getObject()方法来获得特定的mapper实例
+      //这个mapper接口具体的实现类是由beanClassName来设置的。
+      definition.setBeanClass(this.mapperFactoryBeanClass);
+
+      //设置addToConfig，sqlSessionFactory，sqlSessionTemplate
+       ...
+           
+       if (!explicitFactoryUsed) {
+        definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+      }
+    }
+```
+
+该方法主要就是为所有beanDefinition设置了之前提到的各种属性，最关键的是中间两行代码。
+
+做的事情其实是重写BeanDefinition的BeanClass字段为MapperFactoryBean.class，并且将beanClass其实也就是MapperFactoryBean的构造器参数设置为实际的标注了@Mapper的接口。
+
+这么做的原因为：当我们如下图注入Mapper接口时
+
+```java
+    @Autowired
+    private UserMapper userMapper;
+
+```
+
+**实际调用的是MapperFactoryBean中的getObject()获取特定的mapper实例**。因此接下来我们便会对MapperFactoryBean进行讲解。
 
 
-### 总结
+
+### 小总结及困惑
 
 至此，我们知道了使用@MapperScan注释时，可以达到以下结果：
 
 - 生成一个ClassPathMapperScanner scanner，并设置好annotationClass等属性
-- 将basePackages下的所有类都会转化成beanDefinitions并注册到spring容器中
+- 将basePackages下的所有mapper类都会转化成beanDefinitions并注册到spring容器中
+
+存在的困惑：
+
+- 生成ClassPathMapperScanner scanner并设置好annotationClass等属性后，这个scanner用在哪？是直接注入到MapperScan还是？(未解决)
+
+### MapperFactoryBean
+
+本专题涉及的类的结构图如下：
+
+![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/4.png>)
+
+##### 声明：
+
+```java
+public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
+    private Class<T> mapperInterface;
+    ...
+
+```
 
 
 
-### 存在的困惑
+它是继承自SqlSessionSupport这个类并实现FactoryBean这个接口，而参数mapperInterface实际上就是通过上面的```definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);```这段代码注入的。
 
-看完代码还有一个问题不明白： 生成ClassPathMapperScanner scanner并设置好annotationClass等属性后，这个scanner用在哪？是直接注入到MapperScan还是？
+##### getObject()获得mapper实例
+
+```java
+@Override
+public T getObject() throws Exception {
+  return getSqlSession().getMapper(this.mapperInterface);
+}
+
+```
+
+从这里看出是通过getSqlSession().getMapper方法得到的mapper实例，而getSqlSession()实际上是类SqlSessionDaoSupport的方法。
+
+```java
+public abstract class SqlSessionDaoSupport extends DaoSupport {
+
+   //注：这个是类SqlSessionDaoSupport的方法
+   public SqlSession getSqlSession() {
+   	  return this.sqlSessionTemplate;
+   }
+}
+
+```
+
+可以看出，getSqlSession()就是获得sqlSessionTemplate，而sqlSessionTemplate从何而来？
+
+```java
+private SqlSessionTemplate sqlSessionTemplate;
+
+//sqlSessionTemplate是通过sqlSessionFactory获得。
+public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+  if (this.sqlSessionTemplate == null || sqlSessionFactory != this.sqlSessionTemplate.getSqlSessionFactory()) {
+    this.sqlSessionTemplate = createSqlSessionTemplate(sqlSessionFactory);
+  }
+}
+
+```
+
+可以看到，sqlSessionTemplate是通过sqlSessionFactory所获得。对于sqlSessionFactory的产生，请见上一篇博客**“mybatis-plus源码分析-1-sqlSessionFactory的生成”**
+
+
+
+当我们接着看getSqlSession().getMapper()方法时 ```  <T> T getMapper(Class<T> var1);```  ，发现SqlSession是一个接口，getMapper只是一个定义。
+
+作者本人没有找到getMapper的具体实现，但在下面所讲的mapper的注册中有了一些猜测，猜测是从getSqlSession().getConfiguration()中获取的mapper。
+
+
+
+##### 将mapper进行注册
+
+从上图中可以看到MapperFactoryBean实现了InitializingBean方法，因此在初始化MapperFactoryBean时，会调用afterPropertiesSet这个方法，然而MapperFactoryBean并没有这个方法，因此一直向上翻代码，发现其祖父DaoSupport实现了afterPropertiesSet()：
+
+```java
+public abstract class DaoSupport implements InitializingBean {
+	...
+    public final void afterPropertiesSet() throws IllegalArgumentException, BeanInitializationException {
+        this.checkDaoConfig();
+
+        try {
+            this.initDao();
+        } catch (Exception var2) {
+            throw new BeanInitializationException("Initialization of DAO failed", var2);
+        }
+    }
+	...
+}
+
+```
+
+可以看到，在初始化MapperFactoryBean时，会调用checkDaoConfig方法，接下来看该方法：
+
+```java
+  @Override
+  protected void checkDaoConfig() {
+    super.checkDaoConfig();
+
+    notNull(this.mapperInterface, "Property 'mapperInterface' is required");
+
+    Configuration configuration = getSqlSession().getConfiguration();
+    if (this.addToConfig && !configuration.hasMapper(this.mapperInterface)) {
+      try {
+        //最核心的地方！！！！
+        configuration.addMapper(this.mapperInterface);
+      } catch (Exception e) {
+        logger.error("Error while adding the mapper '" + this.mapperInterface + "' to configuration.", e);
+        throw new IllegalArgumentException(e);
+      } finally {
+        ErrorContext.instance().reset();
+      }
+    }
+  }
+
+```
+
+**可以看到，在该方法中，它将MapperFactoryBean中的mapperInterface存入到了SqlSession的Configuration里！**
+
+这也是上文本人猜测是从getSqlSession().getConfiguration()中获取mapper实例的依据。
+
+对于initDao()方法，本人并未找到有代码的具体实现。
+
+
+
+##### MapperFactoryBean的总结及困惑
+
+总结如图：
+
+![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/MapperFactoryBean.png>)
+
+困惑：
+
+- mapperInterface是如何注入进去的？
+
+
+
