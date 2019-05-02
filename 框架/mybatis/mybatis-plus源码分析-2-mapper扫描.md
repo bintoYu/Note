@@ -44,7 +44,7 @@
 
 ### 入口：
 
-![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/3.png>)
+![image](<https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/3.png>)
 
 点击进入MapperScan类：
 
@@ -258,10 +258,9 @@ registerBeanDefinitions方法的主要功能有三：
 ```java
     @Autowired
     private UserMapper userMapper;
-
 ```
 
-**实际调用的是MapperFactoryBean中的getObject()获取特定的mapper实例**。因此接下来我们便会对MapperFactoryBean进行讲解。
+**实际调用的是MapperFactoryBean中的getObject()获取特定的mapper实例**。因此接下来我们便会对MapperFactoryBean进行详细讲解。
 
 
 
@@ -276,73 +275,36 @@ registerBeanDefinitions方法的主要功能有三：
 
 - 生成ClassPathMapperScanner scanner并设置好annotationClass等属性后，这个scanner用在哪？是直接注入到MapperScan还是？(未解决)
 
+
+
 ### MapperFactoryBean
 
 本专题涉及的类的结构图如下：
 
 ![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/4.png>)
 
-##### 声明：
+##### 类声明：
 
 ```java
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
     private Class<T> mapperInterface;
     ...
-
 ```
 
 
 
 它是继承自SqlSessionSupport这个类并实现FactoryBean这个接口，而参数mapperInterface实际上就是通过上面的```definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);```这段代码注入的。
 
-##### getObject()获得mapper实例
 
-```java
-@Override
-public T getObject() throws Exception {
-  return getSqlSession().getMapper(this.mapperInterface);
-}
 
-```
+MapperFactoryBean的主要功能是：
 
-从这里看出是通过getSqlSession().getMapper方法得到的mapper实例，而getSqlSession()实际上是类SqlSessionDaoSupport的方法。
-
-```java
-public abstract class SqlSessionDaoSupport extends DaoSupport {
-
-   //注：这个是类SqlSessionDaoSupport的方法
-   public SqlSession getSqlSession() {
-   	  return this.sqlSessionTemplate;
-   }
-}
-
-```
-
-可以看出，getSqlSession()就是获得sqlSessionTemplate，而sqlSessionTemplate从何而来？
-
-```java
-private SqlSessionTemplate sqlSessionTemplate;
-
-//sqlSessionTemplate是通过sqlSessionFactory获得。
-public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
-  if (this.sqlSessionTemplate == null || sqlSessionFactory != this.sqlSessionTemplate.getSqlSessionFactory()) {
-    this.sqlSessionTemplate = createSqlSessionTemplate(sqlSessionFactory);
-  }
-}
-
-```
-
-可以看到，sqlSessionTemplate是通过sqlSessionFactory所获得。对于sqlSessionFactory的产生，请见上一篇博客**“mybatis-plus源码分析-1-sqlSessionFactory的生成”**
+- 将mapper注册到mybatis容器中 （存）
+- 从mybatis容器中获得mapper（取）
 
 
 
-当我们接着看getSqlSession().getMapper()方法时 ```  <T> T getMapper(Class<T> var1);```  ，发现SqlSession是一个接口，getMapper只是一个定义。
-
-作者本人没有找到getMapper的具体实现，但在下面所讲的mapper的注册中有了一些猜测，猜测是从getSqlSession().getConfiguration()中获取的mapper。
-
-
-
-##### 将mapper进行注册
+##### 将mapper注册到mybatis容器中
 
 从上图中可以看到MapperFactoryBean实现了InitializingBean方法，因此在初始化MapperFactoryBean时，会调用afterPropertiesSet这个方法，然而MapperFactoryBean并没有这个方法，因此一直向上翻代码，发现其祖父DaoSupport实现了afterPropertiesSet()：
 
@@ -353,6 +315,7 @@ public abstract class DaoSupport implements InitializingBean {
         this.checkDaoConfig();
 
         try {
+            //对于initDao()方法，本人并未找到有代码的具体实现。
             this.initDao();
         } catch (Exception var2) {
             throw new BeanInitializationException("Initialization of DAO failed", var2);
@@ -360,7 +323,6 @@ public abstract class DaoSupport implements InitializingBean {
     }
 	...
 }
-
 ```
 
 可以看到，在初始化MapperFactoryBean时，会调用checkDaoConfig方法，接下来看该方法：
@@ -385,26 +347,141 @@ public abstract class DaoSupport implements InitializingBean {
       }
     }
   }
-
 ```
 
-**可以看到，在该方法中，它将MapperFactoryBean中的mapperInterface存入到了SqlSession的Configuration里！**
+可以看到，在该方法中，它将MapperFactoryBean中的mapperInterface存入到了SqlSession的Configuration里！
 
-这也是上文本人猜测是从getSqlSession().getConfiguration()中获取mapper实例的依据。
+接着看```Configuration的addMapper()```方法代码：
 
-对于initDao()方法，本人并未找到有代码的具体实现。
+```java
+//Class Configuration:
+   protected final MapperRegistry mapperRegistry;
+    
+    public <T> void addMapper(Class<T> type) {
+        this.mapperRegistry.addMapper(type);
+    }
+```
+
+可以看到，**mapperInterface实际上是存放到了MapperRegistry中！**
+
+```MapperRegistry的addMapper()```代码如下：
+
+```java
+//Class MapperRegistry:
+ private final Map<Class<?>, MapperProxyFactory<?>> knownMappers = new HashMap();
+
+ public <T> void addMapper(Class<T> type) {
+        if (type.isInterface()) {
+            if (this.hasMapper(type)) {
+                throw new BindingException("Type " + type + " is already known to the MapperRegistry.");
+            }
+
+            boolean loadCompleted = false;
+
+            try {
+            	//关键在这
+                //将mapper的类型作为key，mapper代理工厂作为value存入HashMap knownMappers中
+                this.knownMappers.put(type, new MapperProxyFactory(type));
+                //生成解析器并解析（略）
+                MapperAnnotationBuilder parser = new MapperAnnotationBuilder(this.config, type);
+                parser.parse();
+                loadCompleted = true;
+            } finally {
+                if (!loadCompleted) {
+                    this.knownMappers.remove(type);
+                }
+
+            }
+        }
+
+    }
+```
+
+该方法功能主要有：
+
+- 将mapper的class文件作为key，mapper代理工厂作为value存入HashMap knownMappers中
+- 生成解析器并解析
+
+**到这里，我们便确定了，mapper类最终最终是以类型为key，其代理工厂为value注册到了MapperRegistry中。**
 
 
+
+##### 从mybatis容器中获得mapper
+
+当我们如下图注入Mapper接口时
+
+```java
+    @Autowired
+    private UserMapper userMapper;
+```
+
+**实际调用的是MapperFactoryBean中的getObject()获取特定的mapper实例**。
+
+```java
+@Override
+public T getObject() throws Exception {
+  return getSqlSession().getMapper(this.mapperInterface);
+}
+```
+
+从这里看出是通过getSqlSession().getMapper方法得到的mapper实例，而getSqlSession()实际上是类SqlSessionDaoSupport的方法。
+
+```java
+//Class SqlSessionDaoSupport：
+
+   //注：这个是类SqlSessionDaoSupport的方法
+   public SqlSession getSqlSession() {
+   	  return this.sqlSessionTemplate;
+   }
+```
+
+可以看出，getSqlSession()就是获得sqlSessionTemplate，而sqlSessionTemplate从何而来？
+
+```java
+private SqlSessionTemplate sqlSessionTemplate;
+
+//sqlSessionTemplate是通过sqlSessionFactory获得。
+public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+  if (this.sqlSessionTemplate == null || sqlSessionFactory != this.sqlSessionTemplate.getSqlSessionFactory()) {
+    this.sqlSessionTemplate = createSqlSessionTemplate(sqlSessionFactory);
+  }
+}
+```
+
+可以看到，sqlSessionTemplate是通过sqlSessionFactory所获得。对于sqlSessionFactory的产生，请见上一篇博客**“mybatis-plus源码分析-1-sqlSessionFactory的生成”**  
+
+然而，作者本人并未从SqlSession以及SqlSessionTemplate中查找到getMapper()的相关代码，但是在上一小节”mapper注册到mybatis中“我们知道了mapper实际上存放在了MapperRegistry中，因此，本人去MapperRegistry中查了查，确实找到了getMapper()的具体实现：（具体怎么调用该方法的本人不太明白，还是太菜了）
+
+```java
+//Class MapperRegistry:
+
+   public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
+        MapperProxyFactory<T> mapperProxyFactory = (MapperProxyFactory)this.knownMappers.get(type);
+        if (mapperProxyFactory == null) {
+            throw new BindingException("Type " + type + " is not known to the MapperRegistry.");
+        } else {
+            try {
+                return mapperProxyFactory.newInstance(sqlSession);
+            } catch (Exception var5) {
+                throw new BindingException("Error getting mapper instance. Cause: " + var5, var5);
+            }
+        }
+    }
+```
+
+可以看到，getMapper()方法实际上就是根据type将之前存放的mapper代理工厂取出，然后工厂产出对应xxxMapper代理类。
+
+而为什么要使用mapper代理工厂来生产mapper代理类，原因是我们注入的Mapper（例如上面的userMapper）只是一个接口，没有具体实现，因此需要使用动态代理技术来将 mapper接口 -> mapper代理类。
+
+对于从mapper接口 -> mapper代理类即动态代理这一过程的具体实现，详见"mybatis-动态代理技术.md"
 
 ##### MapperFactoryBean的总结及困惑
 
 总结如图：
 
-![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/MapperFactoryBean.png>)
+![image](<https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/MapperFactoryBean.png>)
 
-困惑：
+##### 困惑：
 
 - mapperInterface是如何注入进去的？
-
-
 
