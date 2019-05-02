@@ -35,7 +35,7 @@
 
 ### 提前总结：流程图
 
-![1556618422137](<https://github.com/bintoYu/Note/blob/master/picture/mybatis-plus/sqlSessionFactory.png>)
+![1556618422137](<https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/sqlSessionFactory.png>)
 
 
 
@@ -54,7 +54,7 @@
 >
 > 第二步：可以从扩展库（external Libraries）中查看到mybatis-plus-boot-starter的源码。
 
-![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/1.png>)
+![image](<https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/1.png>)
 
 红框部分spring.factories中记录了spring-boot-starter类项目的入口为MybatisPlusAutoConfiguration：
 
@@ -71,7 +71,7 @@ org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 
 从注解的角度看：
 
-![image](https://github.com/bintoYu/Note/blob/master/picture/mybatis-plus/2.png)
+![image](https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/2.png)
 
 - @Configuration是将该类加入spring容器当中，
 
