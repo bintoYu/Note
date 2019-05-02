@@ -281,7 +281,7 @@ registerBeanDefinitions方法的主要功能有三：
 
 本专题涉及的类的结构图如下：
 
-![image](<https://github.com/bintoYu/Note/tree/master/picture/mybatis-plus/4.png>)
+![image](<https://github.com/bintoYu/Note/raw/master/picture/mybatis-plus/4.png>)
 
 ##### 类声明：
 
