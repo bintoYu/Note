@@ -71,7 +71,9 @@ public User findUserById(Integer id) {
 
 ### 总流程图
 
-实际上，不管怎么个动态代理，最后都是由sqlSession来执行sql语句的。所以最后还是委托给sqlSession的
+未学习mapper方法时，我们是使用sqlSession来执行sql语句。（详见mybatis基础）
+实际上，只要是mybatis，最后的最后一定还是由sqlSession来执行sql语句的。
+所以从流程图中可以看到，动态代理的最后还是委托给了sqlSession。
 总流程图：（个人理解）
 ![在这里插入图片描述](<https://github.com/bintoYu/Note/raw/master/picture/mybatis%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86.png>)
 
