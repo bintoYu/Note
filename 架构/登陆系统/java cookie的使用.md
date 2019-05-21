@@ -144,15 +144,10 @@ public class CookieDemo02 extends HttpServlet {
 
 #### 5.2、cookie中存取中文
 
-要想在cookie中存储中文，那么必须使用URLEncoder类里面的encode([String](eclipse-javadoc:%E2%98%82=JavaWeb_Cookie_Study_20140715/D:%5C/MyEclipse10%5C/Common%5C/binary%5C/com.sun.java.jdk.win32.x86_1.6.0.013%5C/jre%5C/lib%5C/rt.jar%3Cjava.net(URLEncoder.class%E2%98%83URLEncoder~encode~Ljava.lang.String;~Ljava.lang.String;%E2%98%82String) s, [String](eclipse-javadoc:%E2%98%82=JavaWeb_Cookie_Study_20140715/D:%5C/MyEclipse10%5C/Common%5C/binary%5C/com.sun.java.jdk.win32.x86_1.6.0.013%5C/jre%5C/lib%5C/rt.jar%3Cjava.net(URLEncoder.class%E2%98%83URLEncoder~encode~Ljava.lang.String;~Ljava.lang.String;%E2%98%82String) enc)方法进行中文转码，例如：
+要想在cookie中存储中文，那么必须使用URLEncoder类里面的encode法进行中文转码，例如：
 
 ```java
 Cookie cookie = new Cookie("userName", URLEncoder.encode("孤傲苍狼", "UTF-8"));
 response.addCookie(cookie);
 ```
 
-在获取cookie中的中文数据时，再使用URLDecoder类里面的decode([String](eclipse-javadoc:%E2%98%82=JavaWeb_Cookie_Study_20140715/D:%5C/MyEclipse10%5C/Common%5C/binary%5C/com.sun.java.jdk.win32.x86_1.6.0.013%5C/jre%5C/lib%5C/rt.jar%3Cjava.net(URLDecoder.class%E2%98%83URLDecoder~decode~Ljava.lang.String;~Ljava.lang.String;%E2%98%82String) s, [String](eclipse-javadoc:%E2%98%82=JavaWeb_Cookie_Study_20140715/D:%5C/MyEclipse10%5C/Common%5C/binary%5C/com.sun.java.jdk.win32.x86_1.6.0.013%5C/jre%5C/lib%5C/rt.jar%3Cjava.net(URLDecoder.class%E2%98%83URLDecoder~decode~Ljava.lang.String;~Ljava.lang.String;%E2%98%82String) enc)进行解码，例如：
-
-```java
-URLDecoder.decode(cookies[i].getValue(), "UTF-8")
-```
